@@ -1,0 +1,20 @@
+{
+  "_commentaire": "Extrait de .claude/settings.json — comment les hooks sont branchés. Les chemins sont relatifs à la racine du coffre.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": ".claude/scripts/session-start.sh" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Write", "hooks": [{ "type": "command", "command": ".claude/scripts/batch-write-guard.sh" }] }
+    ],
+    "PostToolUse": [
+      { "matcher": "Write|Edit", "hooks": [{ "type": "command", "command": ".claude/scripts/post-tool-use.sh" }] }
+    ],
+    "PreCompact": [
+      { "hooks": [{ "type": "command", "command": ".claude/scripts/pre-compact.sh" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": ".claude/scripts/stop.sh" }] }
+    ]
+  }
+}

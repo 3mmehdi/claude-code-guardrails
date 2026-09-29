@@ -1,0 +1,4 @@
+.batch-write-state
+*.bak
+*.bak-*
+*.log
