@@ -29,8 +29,11 @@ import re
 import sys
 
 try:
+    # reconfigure() n'existe pas sur les Python < 3.7 ni sur un stderr redirigé
+    # vers un flux binaire. L'absence d'UTF-8 dégrade l'affichage des accents,
+    # elle n'empêche pas le garde-fou de fonctionner : on continue.
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
+except (AttributeError, OSError):
     pass
 
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
@@ -49,9 +52,20 @@ RE_JOUR_DATE = re.compile(
 
 
 def lire(p):
+    """Rend le contenu, ou "" si le fichier n'existe pas.
+
+    Un fichier absent est normal (une note d'agenda peut ne pas exister) ; un
+    fichier présent mais illisible ne l'est pas, et se signale. Sans cette
+    distinction, « je n'ai pas pu lire » s'écrirait comme « il n'y a rien » —
+    le défaut que ce dépôt documente par ailleurs.
+    """
+    if not os.path.exists(p):
+        return ""
     try:
         return io.open(p, encoding="utf-8", errors="replace").read()
-    except Exception:
+    except OSError as e:
+        print("(garde-fou agenda : %s illisible — %s)"
+              % (os.path.basename(p), type(e).__name__), file=sys.stderr)
         return ""
 
 

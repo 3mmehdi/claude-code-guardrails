@@ -17,9 +17,16 @@
 # État persisté : .claude/.batch-write-state (TSV : timestamp \t dir \t file_path)
 # Auto-pruning : entrées > 60s nettoyées à chaque appel.
 
+# -e volontairement ABSENT : les filtres ci-dessous utilisent l'idiome
+# « test && exit 0 ». Sous set -e, un test faux terminerait le script avec un
+# code non nul, et Claude Code lirait ce code comme un blocage.
 set -uo pipefail
 
-VAULT_ROOT=$(pwd)
+# Racine résolue depuis l'emplacement du script, comme les quatre autres hooks.
+# Avec $(pwd), un lancement depuis un autre dossier de travail écrivait l'état
+# ailleurs : la garde cessait de compter sans que rien ne le signale — exactement
+# le défaut que ce dépôt documente.
+VAULT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STATE_FILE="$VAULT_ROOT/.claude/.batch-write-state"
 NOW=$(date +%s)
 WINDOW=60       # fenêtre en secondes
