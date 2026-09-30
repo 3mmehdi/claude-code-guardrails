@@ -98,6 +98,10 @@ tentation inverse est celle qui a produit les 223 Ko.
 **Ce n'est pas un produit installable.** Les chemins pointent vers la structure de mon coffre
 (`wiki/`, `00_Manuel/`, `thinking/`). Les reprendre demande de les adapter.
 
+**Et `hooks/stop.sh` est publié allégé.** Deux retraits volontaires : une adresse IP privée dans un
+message d'aide, et un bloc de synchronisation d'agenda personnel qui n'a rien à voir avec le sujet de
+ce dépôt. Le reste est le fichier tel qu'il tourne.
+
 Ce qui se reprend tel quel, en revanche, c'est la **méthode** :
 
 1. Écrire la règle.
