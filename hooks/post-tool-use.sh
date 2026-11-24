@@ -11,6 +11,15 @@ VAULT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 INPUT=$(cat)
 
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null || echo "")
+# Sans jq dans le PATH du hook, repli python (sinon le hook sortait en silence)
+if [[ -z "$FILE_PATH" ]] && command -v python >/dev/null 2>&1; then
+  FILE_PATH=$(echo "$INPUT" | python -c 'import sys,json;print(json.load(sys.stdin).get("tool_input",{}).get("file_path",""))' 2>/dev/null || echo "")
+fi
+# Chemins Windows (C:\Users\… ou C:/Users/…) -> /c/Users/… comme VAULT_ROOT. Sans cette conversion,
+# REL_PATH ne commençait jamais par wiki/ et le hook ne validait RIEN (constaté le 2026-11-17).
+if [[ -n "$FILE_PATH" ]] && command -v cygpath >/dev/null 2>&1; then
+  FILE_PATH=$(cygpath -u "$FILE_PATH")
+fi
 
 # Ne traiter que les .md dans wiki/ (pas CLAUDE.md, pas .raw, pas thinking/)
 if [[ -z "$FILE_PATH" ]]; then
@@ -78,8 +87,9 @@ if [[ -n "$LINKS" ]]; then
       fi
     else
       # Filename seul : chercher n'importe où dans wiki/
-      if ! find "$VAULT_ROOT/wiki" -name "${link}.md" -print -quit 2>/dev/null | grep -q .; then
-        WARNINGS+=("Lien possiblement cassé : [[$link]] (aucun fichier wiki/**/${link}.md trouvé)")
+      # Tout le coffre, pas seulement wiki/ : les liens vers 00_Manuel/ ou _modèles/ sont valides
+      if ! find "$VAULT_ROOT" -path "$VAULT_ROOT/.raw" -prune -o \( -name "${link}.md" -o -name "${link}.canvas" \) -print -quit 2>/dev/null | grep -q .; then
+        WARNINGS+=("Lien possiblement cassé : [[$link]] (aucun fichier ${link}.md dans le coffre)")
       fi
     fi
   done <<< "$LINKS"
@@ -95,11 +105,13 @@ if (( ${#ERRORS[@]} > 0 )); then
 fi
 
 if (( ${#WARNINGS[@]} > 0 )); then
-  echo "⚠ PostToolUse avertissement sur $REL_PATH:" >&2
-  for w in "${WARNINGS[@]}"; do
-    echo "   - $w" >&2
-  done
-  # Warnings non bloquants
+  # Un stderr en sortie 0 n'est vu par personne (doc hooks) : passer par additionalContext pour que Claude le lise
+  printf '%s\n' "⚠ Validation de $REL_PATH :" "${WARNINGS[@]/#/   - }" | python -c '
+import sys, json
+d = sys.stdin.buffer.read().decode("utf-8", "replace")
+d = "".join(c for c in d if ord(c) < 0x10000)[:9000]
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": d}}))
+'
 fi
 
 exit 0

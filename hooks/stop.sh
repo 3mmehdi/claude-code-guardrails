@@ -62,7 +62,8 @@ if [[ -f "wiki/hot.md" ]]; then
 fi
 
 # Re-index QMD si des pages wiki ont été touchées cette session (détection par mtime > MARKER).
-# Idempotent et incrémental : qmd update ne re-embed que les fichiers modifiés.
+# ⚠️ Corrigé le 2026-11-16 : `qmd update` ajoute les fichiers à l'index mais ne les VECTORISE PAS
+# (167 documents en attente constatés). D'où le `qmd embed` en fond ci-dessous, comme sur le serveur.
 # Couvre le cas d'une grosse batch d'ingest mid-session : au prochain SessionStart
 # l'index serait à jour, mais la passe ici garantit que les requêtes `qmd query`
 # dans la prochaine session (ou par un remote agent) voient les nouvelles pages.
@@ -80,7 +81,15 @@ if command -v qmd >/dev/null 2>&1; then
 
   if (( NEED_REINDEX == 1 )); then
     qmd update >/dev/null 2>&1 && touch "$MARKER" || true
-    echo "✓ Stop hook : QMD réindexé (pages wiki modifiées détectées)" >&2
+    # Vectorisation en fond : plusieurs secondes à quelques minutes, on ne bloque pas la fin de session.
+    # Verrou par mkdir (atomique) pour ne jamais lancer deux `qmd embed` en même temps sur la même base.
+    VERROU=".claude/.qmd-embed.lock"
+    if mkdir "$VERROU" 2>/dev/null; then
+      ( qmd embed >/dev/null 2>&1; rmdir "$VERROU" 2>/dev/null ) &
+    elif [[ -n "$(find "$VERROU" -maxdepth 0 -mmin +60 2>/dev/null)" ]]; then
+      rmdir "$VERROU" 2>/dev/null  # verrou de plus d'une heure = passage mort, on libère pour la prochaine fois
+    fi
+    echo "✓ Stop hook : QMD réindexé, vectorisation lancée en fond (pages wiki modifiées détectées)" >&2
   fi
 fi
 
@@ -240,6 +249,7 @@ if [[ -f "$VAULT_ROOT/.claude/scripts/agenda-guard.py" ]]; then
     "$PY" "$VAULT_ROOT/.claude/scripts/agenda-guard.py" 2>&1 >/dev/null | sed 's/^/&/' >&2 || true
   fi
 fi
+
 
 
 exit 0

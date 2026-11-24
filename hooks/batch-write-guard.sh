@@ -38,6 +38,9 @@ INPUT=$(cat)
 # Naive JSON parsing (no jq dependency — Git Bash compatible)
 TOOL=$(echo "$INPUT" | grep -oE '"tool_name"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
 FILE_PATH=$(echo "$INPUT" | grep -oE '"file_path"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*"\([^"]*\)"$/\1/')
+# Chemins Windows : le JSON porte "C:\\Users\\…" ; sans cette normalisation le filtre wiki/ ne matchait jamais
+# et la garde laissait tout passer en silence (constaté le 2026-11-17, doc hooks : file_path garde ses antislashs).
+FILE_PATH=$(printf '%s' "$FILE_PATH" | sed 's#\\\\#/#g; s#\\#/#g')
 
 # Filtres : seul Write de fichier neuf dans wiki/ ou 00_Manuel/ déclenche la garde
 [ "$TOOL" != "Write" ] && exit 0

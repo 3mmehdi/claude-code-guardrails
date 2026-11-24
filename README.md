@@ -139,3 +139,11 @@ Depuis, je juge une chaîne à **la présence des données attendues**, pas à l
 ## Licence
 
 MIT. Voir [LICENSE](LICENSE).
+
+## Mises à jour
+
+- **24/11/2026** :
+  - `batch-write-guard.sh` et `post-tool-use.sh` : les chemins Windows (`C:\Users\…`) sont normalisés. Sans ça, les deux gardes laissaient tout passer en silence (constaté le 17/11).
+  - `post-tool-use.sh` : les avertissements passent par `additionalContext`, car un stderr en sortie 0 n'est lu par personne. Liens vérifiés dans tout le coffre, pas seulement `wiki/`.
+  - `session-start.sh` : contexte découpé en quatre appels, Claude Code plafonnant chaque `additionalContext` à 10 000 caractères.
+  - `stop.sh` : `qmd update` n'indexe pas les vecteurs ; `qmd embed` est lancé en fond, protégé par un verrou.
